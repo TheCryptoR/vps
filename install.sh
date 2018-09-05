@@ -7,8 +7,8 @@
 #  ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
 #                                                              ╚╗ @marsmensch 2016-2018 ╔╝
 #
-# version 	v0.9.9.9
-# date    	2018-08-20
+# version 	v0.9.9
+# date    	2018-06-09
 #
 # function:	part of the masternode scripts, source the proper config file
 #
@@ -16,7 +16,7 @@
 #               Run this script w/ the desired parameters. Leave blank or use -h for help.
 #
 #	Platforms:
-#               - Linux Ubuntu 16.04 & 18.04 LTS ONLY on a Vultr, Hetzner or DigitalOcean VPS
+#               - Linux Ubuntu 16.04 LTS ONLY on a Vultr, Hetzner or DigitalOcean VPS
 #               - Generic Ubuntu support will be added at a later point in time
 #
 # Twitter 	@marsmensch
@@ -26,7 +26,7 @@ declare -r CRYPTOS=`ls -l config/ | egrep '^d' | awk '{print $9}' | xargs echo -
 declare -r DATE_STAMP="$(date +%y-%m-%d-%s)"
 declare -r SCRIPTPATH=$( cd $(dirname ${BASH_SOURCE[0]}) > /dev/null; pwd -P )
 declare -r MASTERPATH="$(dirname "${SCRIPTPATH}")"
-declare -r SCRIPT_VERSION="v0.9.9.9"
+declare -r SCRIPT_VERSION="v0.9.9"
 declare -r SCRIPT_LOGFILE="/tmp/nodemaster_${DATE_STAMP}_out.log"
 declare -r IPV4_DOC_LINK="https://www.vultr.com/docs/add-secondary-ipv4-address"
 declare -r DO_NET_CONF="/etc/network/interfaces.d/50-cloud-init.cfg"
@@ -110,7 +110,6 @@ function check_distro() {
 # /* no parameters, installs the base set of packages that are required for all projects */
 #
 function install_packages() {
-
     # development and build packages
     # these are common on all cryptos
     echo "* Package installation!"
@@ -121,12 +120,12 @@ function install_packages() {
     libboost-all-dev libssl-dev make autoconf libtool git apt-utils g++ \
     libprotobuf-dev pkg-config libudev-dev libqrencode-dev bsdmainutils \
     pkg-config libgmp3-dev libevent-dev jp2a pv virtualenv libdb4.8-dev libdb4.8++-dev  &>> ${SCRIPT_LOGFILE}
-
+    
     # only for 18.04 // openssl
     if [[ "${VERSION_ID}" == "18.04" ]] ; then
        apt-get -qqy -o=Dpkg::Use-Pty=0 -o=Acquire::ForceIPv4=true install libssl1.0-dev
-    fi
-
+    fi    
+    
 }
 
 #
@@ -202,7 +201,7 @@ function create_sentinel_setup() {
 		git pull                      &>> ${SCRIPT_LOGFILE}
 		rm -f rm sentinel.conf        &>> ${SCRIPT_LOGFILE}
 	fi
-
+	
 	# create a globally accessible venv and install sentinel requirements
 	virtualenv --system-site-packages ${SENTINEL_ENV}      &>> ${SCRIPT_LOGFILE}
 	${SENTINEL_ENV}/bin/pip install -r requirements.txt    &>> ${SCRIPT_LOGFILE}
@@ -210,7 +209,7 @@ function create_sentinel_setup() {
     # create one sentinel config file per masternode
 	for NUM in $(seq 1 ${count}); do
 	    if [ ! -f "${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf" ]; then
-	         echo "* Creating sentinel configuration for ${CODENAME} masternode number ${NUM}" &>> ${SCRIPT_LOGFILE}
+	         echo "* Creating sentinel configuration for ${CODENAME} masternode number ${NUM}" &>> ${SCRIPT_LOGFILE}    
 		     echo "dash_conf=${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf"            > ${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf
              echo "network=mainnet"                                                  >> ${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf
              echo "db_name=${SENTINEL_BASE}/database/${CODENAME}_${NUM}_sentinel.db" >> ${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf
@@ -220,52 +219,12 @@ function create_sentinel_setup() {
 
     export SENTINEL_CONFIG=${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf; cd ${SENTINEL_BASE} && ${SENTINEL_ENV}/bin/python ${SENTINEL_BASE}/bin/sentinel.py
 
+
     echo "$(tput sgr0)$(tput setaf 3)Generated a Sentinel config for you. To activate Sentinel run:$(tput sgr0)"
     echo "$(tput sgr0)$(tput setaf 2)export SENTINEL_CONFIG=${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf; cd ${SENTINEL_BASE} && ${SENTINEL_ENV}/bin/python ${SENTINEL_BASE}/bin/sentinel.py$(tput sgr0)"
     echo ""
     echo "$(tput sgr0)$(tput setaf 2)If it works, add the command as cronjob:  $(tput sgr0)"
     echo "$(tput sgr0)$(tput setaf 2)* * * * * export SENTINEL_CONFIG=${SENTINEL_BASE}/${CODENAME}${NUM}_sentinel.conf; cd ${SENTINEL_BASE} && ${SENTINEL_ENV}/bin/python ${SENTINEL_BASE}/bin/sentinel.py 2>&1 >> /var/log/sentinel/sentinel-cron.log$(tput sgr0)"
-
-}
-
-#
-# /* no parameters, creates a sentinel config for a set of masternodes (one per masternode)  */
-#
-function create_sentinel_setup() {
-
-	# if code directory does not exists, we create it clone the src
-	if [ ! -d /usr/share/sentinel ]; then
-		cd /usr/share                                               &>> ${SCRIPT_LOGFILE}
-		git clone https://github.com/dashpay/sentinel.git sentinel  &>> ${SCRIPT_LOGFILE}
-		cd sentinel                                                 &>> ${SCRIPT_LOGFILE}
-		rm -f rm sentinel.conf                                      &>> ${SCRIPT_LOGFILE}
-	else
-		echo "* Updating the existing sentinel GIT repo"
-		cd /usr/share/sentinel        &>> ${SCRIPT_LOGFILE}
-		git pull                      &>> ${SCRIPT_LOGFILE}
-		rm -f rm sentinel.conf        &>> ${SCRIPT_LOGFILE}
-	fi
-
-	# create a globally accessible venv and install sentinel requirements
-	virtualenv --system-site-packages /usr/share/sentinelvenv      &>> ${SCRIPT_LOGFILE}
-	/usr/share/sentinelvenv/bin/pip install -r requirements.txt    &>> ${SCRIPT_LOGFILE}
-
-    # create one sentinel config file per masternode
-	for NUM in $(seq 1 ${count}); do
-	    if [ ! -f "/usr/share/sentinel/${CODENAME}${NUM}_sentinel.conf" ]; then
-	         echo "* Creating sentinel configuration for ${CODENAME} masternode number ${NUM}" &>> ${SCRIPT_LOGFILE}
-		     echo "dash_conf=${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf"   > /usr/share/sentinel/${CODENAME}${NUM}_sentinel.conf
-             echo "network=mainnet"                                         >> /usr/share/sentinel/${CODENAME}${NUM}_sentinel.conf
-             echo "db_name=database/${CODENAME}_${NUM}_sentinel.db"         >> /usr/share/sentinel/${CODENAME}${NUM}_sentinel.conf
-             echo "db_driver=sqlite"                                        >> /usr/share/sentinel/${CODENAME}${NUM}_sentinel.conf
-        fi
-	done
-
-    echo "Generated a Sentinel config for you. To activate Sentinel run"
-    echo "export SENTINEL_CONFIG=${MNODE_CONF_BASE}/${CODENAME}${NUM}_sentinel.conf; /usr/share/sentinelvenv/bin/python /usr/share/sentinel/bin/sentinel.py"
-    echo ""
-    echo "If it works, add the command as cronjob:  "
-    echo "* * * * * export SENTINEL_CONFIG=${MNODE_CONF_BASE}/${CODENAME}${NUM}_sentinel.conf; /usr/share/sentinelvenv/bin/python /usr/share/sentinel/bin/sentinel.py 2>&1 >> /var/log/sentinel/sentinel-cron.log"
 
 }
 
@@ -318,87 +277,54 @@ function create_mn_configuration() {
 
         # always return to the script root
         cd ${SCRIPTPATH}
-        
-        for NUM in $(seq 1 ${count}); do
-          if [ -n "${PRIVKEY[${NUM}]}" ]; then
-            echo ${PRIVKEY[${NUM}]} >> tmp.txt
-          fi
-        done
-        
-        if [ -f tmp.txt ]; then
-            dup=$(sort -t 8 tmp.txt | uniq -c | sort -nr | head -1 | awk '{print substr($0, 7, 1)}')
-            if [ 1 -ne "$dup" ]; then
-                echo "Private key was duplicated. Please restart this script."
-                rm -r /etc/masternodes
-                rm tmp.txt
-                exit 1
-            fi
-            rm tmp.txt
-        fi
 
         # create one config file per masternode
         for NUM in $(seq 1 ${count}); do
         PASS=$(date | md5sum | cut -c1-24)
 
-	# we dont want to overwrite an existing config file
-	if [ ! -f ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf ]; then
-        	echo "individual masternode config doesn't exist, generate it!"                  &>> ${SCRIPT_LOGFILE}
-		# if a template exists, use this instead of the default
-		if [ -e config/${CODENAME}/${CODENAME}.conf ]; then
-			echo "custom configuration template for ${CODENAME} found, use this instead"                      &>> ${SCRIPT_LOGFILE}
-			cp ${SCRIPTPATH}/config/${CODENAME}/${CODENAME}.conf ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf  &>> ${SCRIPT_LOGFILE}
-		else
-			echo "No ${CODENAME} template found, using the default configuration template"			          &>> ${SCRIPT_LOGFILE}
-			cp ${SCRIPTPATH}/config/default.conf ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf                  &>> ${SCRIPT_LOGFILE}
-		fi
-		# replace placeholders
-		echo "running sed on file ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf"                                &>> ${SCRIPT_LOGFILE}
-	fi
-	
-        if [ -n "${PRIVKEY[${NUM}]}" ]; then
-        	if [ ${#PRIVKEY[${NUM}]} -eq 51 ]; then
-        		sed -e "s/HERE_GOES_YOUR_MASTERNODE_KEY_FOR_MASTERNODE_XXX_GIT_PROJECT_XXX_XXX_NUM_XXX/${PRIVKEY[${NUM}]}/" -i ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf
-          	else
-            		echo "input private key ${PRIVKEY[${NUM}]} was invalid. Please check the key, and restart this script."
-            		rm -r /etc/masternodes
-            		exit 1
-          	fi
-        else :
-        fi
-        sed -e "s/XXX_GIT_PROJECT_XXX/${CODENAME}/" -e "s/XXX_NUM_XXY/${NUM}]/" -e "s/XXX_NUM_XXX/${NUM}/" -e "s/XXX_PASS_XXX/${PASS}/" -e "s/XXX_IPV6_INT_BASE_XXX/[${IPV6_INT_BASE}/" -e "s/XXX_NETWORK_BASE_TAG_XXX/${NETWORK_BASE_TAG}/" -e "s/XXX_MNODE_INBOUND_PORT_XXX/${MNODE_INBOUND_PORT}/" -i ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf
-	if [ -z "${PRIVKEY[${NUM}]}" ]; then
-		if [ "$startnodes" -eq 1 ]; then
-			#uncomment masternode= and masternodeprivkey= so the node can autostart and sync
-			sed 's/\(^.*masternode\(\|privkey\)=.*$\)/#\1/' -i ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf
-		fi
-	fi
+            # we dont want to overwrite an existing config file
+            if [ ! -f ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf ]; then
+                echo "individual masternode config doesn't exist, generate it!"                  &>> ${SCRIPT_LOGFILE}
+
+                # if a template exists, use this instead of the default
+                if [ -e config/${CODENAME}/${CODENAME}.conf ]; then
+                    echo "custom configuration template for ${CODENAME} found, use this instead"                      &>> ${SCRIPT_LOGFILE}
+                    cp ${SCRIPTPATH}/config/${CODENAME}/${CODENAME}.conf ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf  &>> ${SCRIPT_LOGFILE}
+                else
+                    echo "No ${CODENAME} template found, using the default configuration template"			          &>> ${SCRIPT_LOGFILE}
+                    cp ${SCRIPTPATH}/config/default.conf ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf                  &>> ${SCRIPT_LOGFILE}
+                fi
+                # replace placeholders
+                echo "running sed on file ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf"                                &>> ${SCRIPT_LOGFILE}
+                sed -e "s/XXX_GIT_PROJECT_XXX/${CODENAME}/" -e "s/XXX_NUM_XXY/${NUM}]/" -e "s/XXX_NUM_XXX/${NUM}/" -e "s/XXX_PASS_XXX/${PASS}/" -e "s/XXX_IPV6_INT_BASE_XXX/[${IPV6_INT_BASE}/" -e "s/XXX_NETWORK_BASE_TAG_XXX/${NETWORK_BASE_TAG}/" -e "s/XXX_MNODE_INBOUND_PORT_XXX/${MNODE_INBOUND_PORT}/" -i ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf
+                if [ "$startnodes" -eq 1 ]; then
+                    #uncomment masternode= and masternodeprivkey= so the node can autostart and sync
+                    sed 's/\(^.*masternode\(\|privkey\)=.*$\)/#\1/' -i ${MNODE_CONF_BASE}/${CODENAME}_n${NUM}.conf
+                fi
+            fi
+        done
 
 }
 
 #
-# /* no parameters, generates a masternode configuration file per masternode in the default location */
+# /* no parameters, generates a masternode configuration file per masternode in the default */
 #
-
 function create_control_configuration() {
 
-   # delete any old stuff that's still around
-   rm -f /tmp/${CODENAME}_masternode.conf &>> ${SCRIPT_LOGFILE}
-   		
-  # create one line per masternode with the data we have
-	for NUM in $(seq 1 ${count}); do
-	    if [ -n "${PRIVKEY[${NUM}]}" ]; then
-    			echo ${CODENAME}MN${NUM} [${IPV6_INT_BASE}:${NETWORK_BASE_TAG}::${NUM}]:${MNODE_INBOUND_PORT} ${PRIVKEY[${NUM}]} COLLATERAL_TX_FOR_${CODENAME}MN${NUM} OUTPUT_NO_FOR_${CODENAME}MN${NUM} >> /tmp/${CODENAME}_masternode.conf
-    	else
-					echo ${CODENAME}MN${NUM} [${IPV6_INT_BASE}:${NETWORK_BASE_TAG}::${NUM}]:${MNODE_INBOUND_PORT} MASTERNODE_PRIVKEY_FOR_${CODENAME}MN${NUM} COLLATERAL_TX_FOR_${CODENAME}MN${NUM} OUTPUT_NO_FOR_${CODENAME}MN${NUM} >> /tmp/${CODENAME}_masternode.conf
-  		fi
-	done
+    # delete any old stuff that's still around
+    rm -f /tmp/${CODENAME}_masternode.conf &>> ${SCRIPT_LOGFILE}
+    # create one line per masternode with the data we have
+    for NUM in $(seq 1 ${count}); do
+		cat >> /tmp/${CODENAME}_masternode.conf <<-EOF
+			${CODENAME}MN${NUM} [${IPV6_INT_BASE}:${NETWORK_BASE_TAG}::${NUM}]:${MNODE_INBOUND_PORT} MASTERNODE_PRIVKEY_FOR_${CODENAME}MN${NUM} COLLATERAL_TX_FOR_${CODENAME}MN${NUM} OUTPUT_NO_FOR_${CODENAME}MN${NUM}
+		EOF
+    done
 
 }
 
 #
 # /* no parameters, generates a a pre-populated masternode systemd config file */
 #
-
 function create_systemd_configuration() {
 
     echo "* (over)writing systemd config files for masternodes"
@@ -436,7 +362,7 @@ function create_systemd_configuration() {
 
 #
 # /* set all permissions to the masternode user */
-
+#
 function set_permissions() {
 
 	# maybe add a sudoers entry later
@@ -450,7 +376,6 @@ function set_permissions() {
 #
 # /* wipe all files and folders generated by the script for a specific project */
 #
-
 function wipe_all() {
 
     echo "Deleting all ${project} related data!"
@@ -464,31 +389,11 @@ function wipe_all() {
 }
 
 #
-#Generate masternode private key
-#
-function generate_privkey() {
-	echo -e "rpcuser=test\nrpcpassword=passtest" >> ${MNODE_CONF_BASE}/${CODENAME}_test.conf
-  	mkdir -p ${MNODE_DATA_BASE}/${CODENAME}_test
-  	phored -daemon -conf=${MNODE_CONF_BASE}/${CODENAME}_test.conf -datadir=${MNODE_DATA_BASE}/${CODENAME}_test
-  	sleep 5
-  	
-	for NUM in $(seq 1 ${count}); do
-    		if [ -z "${PRIVKEY[${NUM}]}" ]; then
-    			PRIVKEY[${NUM}]=$(phore-cli -conf=${MNODE_CONF_BASE}/${CODENAME}_test.conf -datadir=${MNODE_DATA_BASE}/${CODENAME}_test masternode genkey)
-    		fi
-  	done
-  	phore-cli -conf=${MNODE_CONF_BASE}/${CODENAME}_test.conf -datadir=${MNODE_DATA_BASE}/${CODENAME}_test stop
-  	sleep 5
-  	rm -r ${MNODE_CONF_BASE}/${CODENAME}_test.conf ${MNODE_DATA_BASE}/${CODENAME}_test
-}
-
-#
 # /*
 # remove packages and stuff we don't need anymore and set some recommended
 # kernel parameters
 # */
 #
-
 function cleanup_after() {
 
     #apt-get -qqy -o=Dpkg::Use-Pty=0 --force-yes autoremove
@@ -619,32 +524,19 @@ function source_config() {
         install_packages
         print_logo
         build_mn_from_source
-        
-        # startif update
         if [ "$update" -eq 0 ]; then
             create_mn_user
             create_mn_dirs
- 
-            # private key initialize
-            if [ "$generate" -eq 1 ]; then
-                echo "Generating masternode private key" &>> ${SCRIPT_LOGFILE}
-                generate_privkey
-            fi
-
             # sentinel setup
             if [ "$sentinel" -eq 1 ]; then
-                 echo "* Sentinel setup chosen" &>> ${SCRIPT_LOGFILE}
-                 create_sentinel_setup
+                echo "* Sentinel setup chosen" &>> ${SCRIPT_LOGFILE}
+                create_sentinel_setup
             fi
-
             configure_firewall
             create_mn_configuration
             create_control_configuration
             create_systemd_configuration
-        
-        #  endif update
         fi
-        
         set_permissions
         cleanup_after
         showbanner
@@ -675,7 +567,6 @@ function print_logo() {
 #
 # /* no parameters, builds the required masternode binary from sources. Exits if already exists and "update" not given  */
 #
-
 function build_mn_from_source() {
         # daemon not found compile it
         if [ ! -f ${MNODE_DAEMON} ] || [ "$update" -eq 1 ]; then
@@ -704,13 +595,6 @@ function build_mn_from_source() {
                     fi
                 fi
 
-                # print ascii banner if a logo exists
-                echo -e "* Starting the compilation process for ${CODENAME}, stay tuned"
-                if [ -f "${SCRIPTPATH}/assets/$CODENAME.jpg" ]; then
-                        jp2a -b --colors --width=56 ${SCRIPTPATH}/assets/${CODENAME}.jpg
-                else
-                        jp2a -b --colors --width=56 ${SCRIPTPATH}/assets/default.jpg
-                fi
                 # compilation starts here
                 source ${SCRIPTPATH}/config/${CODENAME}/${CODENAME}.compile | pv -t -i0.1
         else
@@ -727,7 +611,6 @@ function build_mn_from_source() {
 #
 # /* no parameters, print some (hopefully) helpful advice  */
 #
-
 function final_call() {
     # note outstanding tasks that need manual work
     echo "************! ALMOST DONE !******************************"
@@ -764,13 +647,11 @@ function final_call() {
         ${MNODE_HELPER}_${CODENAME}
     fi
     tput sgr0
-
 }
 
 #
 # /* no parameters, create the required network configuration. IPv6 is auto.  */
 #
-
 function prepare_mn_interfaces() {
 
     # this allows for more flexibility since every provider uses another default interface
@@ -826,6 +707,11 @@ function prepare_mn_interfaces() {
 
     # generate the required ipv6 config
     if [ "${net}" -eq 6 ]; then
+    	# preventing possible /etc/rc.local not found errors during ipv6 installation
+	if [ "${NETWORK_CONFIG}" = "/etc/rc.local" ]; then
+	  touch ${NETWORK_CONFIG}
+	fi
+	
         # vultr specific, needed to work
         sed -ie '/iface ${ETH_INTERFACE} inet6 auto/s/^/#/' ${NETWORK_CONFIG}
 
@@ -844,7 +730,9 @@ function prepare_mn_interfaces() {
               echo "Creating new IP address for ${CODENAME} masternode nr ${NUM}" &>> ${SCRIPT_LOGFILE}
               if [ "${NETWORK_CONFIG}" = "/etc/rc.local" ]; then
                 # need to put network config in front of "exit 0" in rc.local
-                sed -e '$i ip -6 addr add '"${IPV6_INT_BASE}"':'"${NETWORK_BASE_TAG}"'::'"${NUM}"'/64 dev '"${ETH_INTERFACE}"'\n' -i ${NETWORK_CONFIG}
+		# hoping to fix address persistence issues
+                # sed -e '$i ip -6 addr add '"${IPV6_INT_BASE}"':'"${NETWORK_BASE_TAG}"'::'"${NUM}"'/64 dev '"${ETH_INTERFACE}"'\n' -i ${NETWORK_CONFIG}
+		sed -ie '$i ip -6 addr add '"${IPV6_INT_BASE}"':'"${NETWORK_BASE_TAG}"'::'"${NUM}"'/64 dev '"${ETH_INTERFACE}"'\n' ${NETWORK_CONFIG}
               else
                 # if not using rc.local, append normally
                   echo "ip -6 addr add ${IPV6_INT_BASE}:${NETWORK_BASE_TAG}::${NUM}/64 dev ${ETH_INTERFACE}" >> ${NETWORK_CONFIG}
@@ -864,11 +752,10 @@ wipe=0;
 debug=0;
 update=0;
 sentinel=0;
-generate=0;
 startnodes=0;
 
 # Execute getopt
-ARGS=$(getopt -o "hp:n:c:r:wsudxgk:k2:k3:k4:k5:k6:k7:k8:k9:k10:" -l "help,project:,net:,count:,release:,wipe,sentinel,update,debug,startnodes,generate,key:,key2:,key3:,key4:,key5:,key6:,key7:,key8:,key9:,key10:" -n "install.sh" -- "$@");
+ARGS=$(getopt -o "hp:n:c:r:wsudx" -l "help,project:,net:,count:,release:,wipe,sentinel,update,debug,startnodes" -n "install.sh" -- "$@");
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -880,11 +767,11 @@ eval set -- "$ARGS";
 
 while true; do
     case "$1" in
-        -h |--help)
+        -h|--help)
             shift;
             help;
             ;;
-        -p |--project)
+        -p|--project)
             shift;
                     if [ -n "$1" ];
                     then
@@ -892,7 +779,7 @@ while true; do
                         shift;
                     fi
             ;;
-        -n |--net)
+        -n|--net)
             shift;
                     if [ -n "$1" ];
                     then
@@ -900,7 +787,7 @@ while true; do
                         shift;
                     fi
             ;;
-        -c |--count)
+        -c|--count)
             shift;
                     if [ -n "$1" ];
                     then
@@ -908,7 +795,7 @@ while true; do
                         shift;
                     fi
             ;;
-        -r |--release)
+        -r|--release)
             shift;
                     if [ -n "$1" ];
                     then
@@ -917,19 +804,19 @@ while true; do
                         shift;
                     fi
             ;;
-        -w |--wipe)
+        -w|--wipe)
             shift;
                     wipe="1";
             ;;
-        -s |--sentinel)
+        -s|--sentinel)
             shift;
                     sentinel="1";
             ;;
-        -u |--update)
+        -u|--update)
             shift;
                     update="1";
             ;;
-        -d |--debug)
+        -d|--debug)
             shift;
                     debug="1";
             ;;
@@ -938,90 +825,6 @@ while true; do
                     startnodes="1";
             ;;
 
-        -g | --generate)
-            shift;
-                    generate="1";
-            ;;
-        -k |--key)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[1]="$1";
-                        shift;
-                    fi
-            ;;
-        -k2 |--key2)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[2]="$1";
-                        shift;
-                    fi
-            ;;
-        -k3 |--key3)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[3]="$1";
-                        shift;
-                    fi
-            ;;
-        -k4 |--key4)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[4]="$1";
-                        shift;
-                    fi
-            ;;
-        -k5 |--key5)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[5]="$1";
-                        shift;
-                    fi
-            ;;
-        -k6 |--key6)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[6]="$1";
-                        shift;
-                    fi
-            ;;
-        -k7 |--key7)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[7]="$1";
-                        shift;
-                    fi
-            ;;
-	      -k8 |--key8)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[8]="$1";
-                        shift;
-                    fi
-            ;;
-        -k9 |--key9)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[9]="$1";
-                        shift;
-                    fi
-            ;;
-	     -k10 |--key10)
-            shift;
-                    if [ -n "$1" ];
-                    then
-                        PRIVKEY[10]="$1";
-                        shift;
-                    fi
-            ;;
         --)
             shift;
             break;
