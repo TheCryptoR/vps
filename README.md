@@ -102,7 +102,7 @@ These are only a couple of examples for typical setups. Check my [easy step-by-s
 ## Options
 
 The _install.sh_ script support the following parameters:
-C
+
 | Long Option  | Short Option | Values              | description                                                         |
 | :----------- | :----------- | ------------------- | ------------------------------------------------------------------- |
 | --project    | -p           | project, e.g. "pix" | shortname for the project                                           |
